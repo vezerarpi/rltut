@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+import subprocess
+import argparse
+
+
+def sh(cmd, **args):
+    if subprocess.call(cmd.format(**args), shell=True):
+        exit(1)
+
+
+def build():
+    sh('docker build --rm -t rltut .')
+
+
+def notebook():
+    # IPython.lib.passwd(...)
+    password = 'sha1:8c32fae28315:813267d072646f039a6c211ff4a946a6a2d1ccfc'
+    sh('docker rm -f rltut-notebook || true')
+    sh('docker run -d --name rltut-notebook -p 6767:6767'
+       ' -v `pwd`:/work -w /work'
+       ' rltut'
+       ' jupyter notebook --port=6767 --ip="*"'
+       ' --allow-root --NotebookApp.password={password}',
+       password=password)
+    print('Running notebook at http://localhost:6767')
+
+
+parser = argparse.ArgumentParser(
+    description='Runner script for rltut'
+)
+parser.set_defaults(action=lambda: parser.print_help())
+subs = parser.add_subparsers()
+subs.add_parser('build').set_defaults(action=build)
+subs.add_parser('notebook').set_defaults(action=notebook)
+
+args = vars(parser.parse_args())
+action = args.pop('action')
+action(**args)
