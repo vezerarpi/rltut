@@ -13,9 +13,16 @@ def build():
     sh('docker build --rm -t rltut .')
 
 
+def run(command):
+    sh('docker run --rm -it rltut {command}',
+       command=' '.join(command))
+
+
 def notebook():
-    # IPython.lib.passwd(...)
-    password = 'sha1:8c32fae28315:813267d072646f039a6c211ff4a946a6a2d1ccfc'
+    password = subprocess.check_output(
+        'docker run --rm -i -v `pwd`:/work -w /work rltut'
+        ' python3 get_ipython_password.py',
+        shell=True).decode('utf-8').rstrip('\n')
     sh('docker rm -f rltut-notebook || true')
     sh('docker run -d --name rltut-notebook -p 6767:6767'
        ' -v `pwd`:/work -w /work'
@@ -33,6 +40,9 @@ parser.set_defaults(action=lambda: parser.print_help())
 subs = parser.add_subparsers()
 subs.add_parser('build').set_defaults(action=build)
 subs.add_parser('notebook').set_defaults(action=notebook)
+p = subs.add_parser('run')
+p.add_argument('command', nargs='*')
+p.set_defaults(action=run)
 
 args = vars(parser.parse_args())
 action = args.pop('action')
