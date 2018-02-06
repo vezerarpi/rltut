@@ -27,8 +27,9 @@ def notebook():
     sh('docker run -d --name rltut-notebook -p 6767:6767'
        ' -v `pwd`:/work -w /work'
        ' rltut'
-       ' jupyter notebook --port=6767 --ip="*"'
-       ' --allow-root --NotebookApp.password={password}',
+       ' bash -c \'Xvfb -screen 0 1400x900x24 :99 &'
+       ' DISPLAY=:99 jupyter notebook --port=6767 --ip="*"'
+       ' --allow-root --NotebookApp.password={password}\'',
        password=password)
     print('Running notebook at http://localhost:6767')
 
