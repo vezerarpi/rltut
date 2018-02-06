@@ -16,6 +16,7 @@ import numpy as np
 # In[ ]:
 
 
+exp_init_size = 500
 n_episodes = 1000
 rng = random.Random()
 rng.seed(42)
@@ -52,7 +53,8 @@ class Agent:
         self._last_act = 0
         self._state = None
         self._model = Model()
-        self._optim = C.optimizers.SGD(lr=self._lr)
+        #XXX self._optim = C.optimizers.SGD(lr=self._lr)
+        self._optim = C.optimizers.RMSprop(lr=self._lr)
         self._optim.setup(self._model)
 
     def act(self, state):
@@ -75,6 +77,10 @@ class Agent:
 
     def _make_exp(self, state, action, reward, next_state):
         return dict(state=state, action=action, reward=reward, next_state=next_state)
+
+    def store(self, state, action, reward, next_state):
+        self._exps.append(self._make_exp(state, action, reward, next_state))
+
 
     def reward(self, reward, next_state):
         self._epsilon -= 1e-3
@@ -103,13 +109,22 @@ agent.reward(1.0, np.ones(4, dtype=np.float32))
 
 # In[ ]:
 
-
-env = gym.wrappers.Monitor(gym.make('CartPole-v0'),
-                           directory='out',
-                           force=True)
-
+env = gym.make('CartPole-v0')
 env.seed(0)
 agent = Agent()
+
+state = None
+for i in range(exp_init_size):
+    if state is None:
+        state = env.reset()
+        state = np.array(state, dtype=np.float32)
+    action = rng.choice([0, 1])
+    next_state, reward, done, _ = env.step(action)
+    next_state = None if done else np.array(next_state, dtype=np.float32)
+    agent.store(state, action, reward, next_state)
+    state = next_state
+
+env = gym.wrappers.Monitor(env, directory='out', force=True)
 
 for ep in range(n_episodes):
     state = env.reset()
@@ -119,8 +134,10 @@ for ep in range(n_episodes):
         state, reward, done, _ = env.step(agent.act(np.array(state, dtype=np.float32)))
         state = np.array(state, dtype=np.float32)
         losses.append(agent.reward(reward, None if done else state))
+    '''
     print(ep, 'steps', env.get_episode_lengths()[-1])
     '''
-    print(ep, 'steps', env.get_episode_lengths()[-1],
-            'losses', list(map(lambda l: '{:.3f}'.format(l), losses)))
-    '''
+    loss_hist, loss_bins = np.histogram(losses, bins=10)
+    print(ep, 'steps', env.get_episode_lengths()[-1])
+    print('losses hist', list(map(lambda l: '{: >5d}'.format(l), loss_hist)))
+    print('  ', list(map(lambda l: '{:.3f}'.format(l), loss_bins)))
