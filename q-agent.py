@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[ ]:
@@ -17,7 +16,9 @@ import numpy as np
 
 
 exp_init_size = 500
-n_episodes = 1000
+n_episodes = 8000
+# number of episodes after which to print q function evaluation
+eval_period = 20
 rng = random.Random()
 rng.seed(42)
 
@@ -30,9 +31,13 @@ class Model(C.Chain):
         super().__init__()
         state_size = 4
         action_size = 2
-        hidden_size = 8
-        self.l1 = C.links.Linear(state_size, hidden_size)
-        self.l2 = C.links.Linear(hidden_size, action_size)
+        hidden_size = 16
+        # Chain.init_scope is necessary for gradient book-keeping to be set up
+        # for all the links defined below, otherwise errors are not
+        # propagated back through the graph
+        with self.init_scope():
+            self.l1 = C.links.Linear(state_size, hidden_size)
+            self.l2 = C.links.Linear(hidden_size, action_size)
 
     def __call__(self, state):
         h = C.functions.relu(self.l1(state))
@@ -44,6 +49,8 @@ class Model(C.Chain):
 
 class Agent:
     def __init__(self):
+        # number of steps after which to update parameters of the target model
+        self._update_freq = 1
         self._lr = 0.01
         self._epsilon = 1.0
         self._gamma = 0.95
@@ -53,8 +60,14 @@ class Agent:
         self._last_act = 0
         self._state = None
         self._model = Model()
-        #XXX self._optim = C.optimizers.SGD(lr=self._lr)
-        self._optim = C.optimizers.RMSprop(lr=self._lr)
+        if self._update_freq > 1:
+            self._target_model = Model()
+            self._target_model.copyparams(self._model)
+        else:
+            self._target_model = self._model
+        self._update_count = 0
+        self._optim = C.optimizers.SGD(lr=self._lr)
+        # self._optim = C.optimizers.RMSprop(lr=self._lr)
         self._optim.setup(self._model)
 
     def act(self, state):
@@ -72,7 +85,7 @@ class Agent:
         if experience['next_state'] is not None:
             # next state x
             x = experience['next_state'].reshape((1, -1)).astype(np.float32)
-            y += self._gamma * np.max(self._model(C.Variable(x)).data)
+            y += self._gamma * np.max(self._target_model(C.Variable(x)).data)
         return y
 
     def _make_exp(self, state, action, reward, next_state):
@@ -81,31 +94,60 @@ class Agent:
     def store(self, state, action, reward, next_state):
         self._exps.append(self._make_exp(state, action, reward, next_state))
 
-
     def reward(self, reward, next_state):
         self._epsilon -= 1e-3
         self._exps.append(self._make_exp(self._state, self._last_act, reward, next_state))
-        batch_size = 32
-        #sample a batch
+        batch_size = 64
+        # sample a batch
         sample = rng.sample(self._exps, k=min(batch_size, len(self._exps)))
-        #eval batch
+        # eval batch
         states = np.stack([s['state'] for s in sample])
         actions = np.stack([s['action'] for s in sample]).astype(np.int32)
         y = C.Variable(np.stack([self._target(s) for s in sample]).astype(np.float32))
-        #calc loss
+        # calc loss
         self._model.cleargrads()
         qs = self._model(C.Variable(states))
         q = qs[np.arange(len(sample)), actions]
         loss = C.functions.mean_squared_error(y, q)
-        #XXX print('loss', float(loss.data))
         loss.backward()
         self._optim.update()
-        return np.asscalar(loss.data)#XXX
+        self._update_count += 1
+        if self._update_freq > 1 and self._update_count % self._update_freq == 0:
+            self._target_model.copyparams(self._model)
+        return np.asscalar(loss.data), loss#XXX loss returned from printing link
+
+    def eval_q(self, states):
+        qs = self._model(C.Variable(states)).data
+        self._model.cleargrads()
+        return qs
+
+
+def eval_states(agent):
+    # from https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py#L31 noqa
+    theta_limit = 10 * 2 * np.pi / 360
+    n = 7
+    thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
+    states = np.array([[0.0, 0.0, theta, 0.0]
+                       for theta in thetas],
+                      dtype=np.float32)
+    print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
+                                 for x in states[:, 2] * 360 / 2 / np.pi]))
+    qs = agent.eval_q(states)
+    a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
+    print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
+                                 for l, r in qs]))
+    print('Eval Q    ', ''.join(['[{:5.2f}{}{:5.2f}]'.format(l, y, r)
+                                 for (l, r), y in zip(qs, a)]))
+
+
+def print_params(chain):
+    for path, param in chain.namedparams():
+        print(path, param)
+
 
 agent = Agent()
 print([agent.act(np.ones(4, dtype=np.float32)) for i in range(50)])
 agent.reward(1.0, np.ones(4, dtype=np.float32))
-
 
 # In[ ]:
 
@@ -129,15 +171,13 @@ env = gym.wrappers.Monitor(env, directory='out', force=True)
 for ep in range(n_episodes):
     state = env.reset()
     done = False
-    losses = []
     while not done:
         state, reward, done, _ = env.step(agent.act(np.array(state, dtype=np.float32)))
         state = np.array(state, dtype=np.float32)
-        losses.append(agent.reward(reward, None if done else state))
-    '''
-    print(ep, 'steps', env.get_episode_lengths()[-1])
-    '''
-    loss_hist, loss_bins = np.histogram(losses, bins=10)
-    print(ep, 'steps', env.get_episode_lengths()[-1])
-    print('losses hist', list(map(lambda l: '{: >5d}'.format(l), loss_hist)))
-    print('  ', list(map(lambda l: '{:.3f}'.format(l), loss_bins)))
+        agent.reward(reward, None if done else state)
+    if ep % eval_period == 0:
+        ep_lengths = env.get_episode_lengths()[-eval_period:]
+        print('-' * 11)
+        if ep:
+            print('episodes', ep - eval_period, '-', ep, 'steps', ' '.join(map(str, ep_lengths)))
+        eval_states(agent)
