@@ -1,2 +1,4 @@
 .ipynb_checkpoints
 .notebook-password
+out/
+local/
