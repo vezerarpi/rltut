@@ -43,7 +43,6 @@ class Model(C.Chain):
             self.action_values = C.links.Linear(projection_size, n_actions)
 
     def __call__(self, state):
-        #XXX is the input normalised by the env? state /= 25
         z1 = C.functions.relu(self.conv1(state))
         z2 = C.functions.relu(self.conv2(z1))
         z3 = C.functions.relu(self.projection(z2))
@@ -57,6 +56,9 @@ class Agent:
         self._lr = 0.01
         self._epsilon = 1.0
         self._gamma = 0.99
+        self._observation_shape = observation_shape
+        self._x_shape = (-1,) + self._observation_shape
+        self._n_actions = n_actions
         # experience buffer
         # {'state', 'action', 'reward', 'next_state'}
         self._exps = []
@@ -73,11 +75,18 @@ class Agent:
         self._optim = C.optimizers.RMSprop(lr=self._lr)
         self._optim.setup(self._model)
 
+    def _prepare_input(self, x):
+        assert len(x.shape) in [3, 4]
+        if len(x.shape) == 3:
+            x = x.reshape((-1,) + x.shape)
+        x = np.moveaxis(x, 3, 1).astype(np.float32)
+        return x / 255.  # normalise pixel values
+
     def act(self, state):
         if rng.random() < self._epsilon:
             self._last_act = rng.choice([0, 1])
         else:
-            x = state.reshape((1, -1))
+            x = self._prepare_input(state)
             self._last_act = np.argmax(self._model(C.Variable(x)).data)
         self._state = state
         return self._last_act
@@ -87,8 +96,7 @@ class Agent:
         y = np.float32(experience['reward'])
         if experience['next_state'] is not None:
             # next state x
-            x = experience['next_state'].reshape((1, -1)).astype(np.float32)
-            #XXX continue here, reshape the image(s)
+            x = self._prepare_input(experience['next_state'])
             y += self._gamma * np.max(self._target_model(C.Variable(x)).data)
         return y
 
@@ -110,6 +118,7 @@ class Agent:
         y = C.Variable(np.stack([self._target(s) for s in sample]).astype(np.float32))
         # calc loss
         self._model.cleargrads()
+        states = np.moveaxis(states, 3, 1)
         qs = self._model(C.Variable(states))
         q = qs[np.arange(len(sample)), actions]
         loss = C.functions.mean_squared_error(y, q)
@@ -154,11 +163,6 @@ def print_params(chain):
 env = gym.make(env_name)
 env.seed(0)
 
-# quick forward test of the network
-agent = Agent(env.observation_space.shape, env.action_space.n)
-np.array(env.reset(), dtype=np.float32)
-print(agent.act(np.array(env.reset(), dtype=np.float32)))
-
 agent = Agent(env.observation_space.shape, env.action_space.n)
 
 state = None
@@ -186,4 +190,4 @@ for ep in range(n_episodes):
         print('-' * 11)
         if ep:
             print('episodes', ep - eval_period, '-', ep, 'steps', ' '.join(map(str, ep_lengths)))
-        eval_states(agent)
+        #XXX nope eval_states(agent)
