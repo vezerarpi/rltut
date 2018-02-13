@@ -1,5 +1,7 @@
 # coding: utf-8
+import operator
 import random
+import time
 
 import gym
 import chainer as C
@@ -13,9 +15,6 @@ n_episodes = 8000
 eval_period = 20
 rng = random.Random()
 rng.seed(42)
-
-
-# In[ ]:
 
 
 class Model(C.Chain):
@@ -50,15 +49,16 @@ class Model(C.Chain):
 
 
 class Agent:
-    def __init__(self, observation_shape, n_actions):
+    def __init__(self, observation_shape, n_actions, dummy_state):
         # number of steps after which to update parameters of the target model
         self._update_freq = 1
         self._lr = 0.01
         self._epsilon = 1.0
-        self._gamma = 0.99
+        self._gamma = C.cuda.to_gpu(np.float32(0.99))
         self._observation_shape = observation_shape
         self._x_shape = (-1,) + self._observation_shape
         self._n_actions = n_actions
+        self._dummy_state = dummy_state
         # experience buffer
         # {'state', 'action', 'reward', 'next_state'}
         self._exps = []
@@ -68,8 +68,10 @@ class Agent:
         if self._update_freq > 1:
             self._target_model = Model()
             self._target_model.copyparams(self._model)
+            self._target_model.to_gpu()
         else:
             self._target_model = self._model
+            self._model.to_gpu()
         self._update_count = 0
         # self._optim = C.optimizers.SGD(lr=self._lr)
         self._optim = C.optimizers.RMSprop(lr=self._lr)
@@ -87,17 +89,25 @@ class Agent:
             self._last_act = rng.choice([0, 1])
         else:
             x = self._prepare_input(state)
-            self._last_act = np.argmax(self._model(C.Variable(x)).data)
+            self._last_act = np.argmax(C.cuda.to_cpu(self._model(C.Variable(C.cuda.to_gpu(x))).data))
         self._state = state
         return self._last_act
 
-    def _target(self, experience):
+    def _target(self, experiences):
         # y = reward + gamma * Qmax(action, next_state)
-        y = np.float32(experience['reward'])
-        if experience['next_state'] is not None:
-            # next state x
-            x = self._prepare_input(experience['next_state'])
-            y += self._gamma * np.max(self._target_model(C.Variable(x)).data)
+        y = C.cuda.to_gpu(np.array([e['reward'] for e in experiences],
+                                   dtype=np.float32))
+        done_list = np.array([e['next_state'] is None for e in experiences],
+                             dtype=np.float32)
+        done = C.cuda.to_gpu(done_list)
+        next_states = np.stack([e['next_state'] if e['next_state'] is not None
+                                else self._dummy_state for e in experiences])
+        # next state x
+        x = self._prepare_input(next_states)
+        q = self._target_model(C.Variable(C.cuda.to_gpu(x)))
+        estimate = C.functions.max(q, axis=1).data
+        estimate = self._gamma * done
+        y += estimate
         return y
 
     def _make_exp(self, state, action, reward, next_state):
@@ -114,20 +124,22 @@ class Agent:
         sample = rng.sample(self._exps, k=min(batch_size, len(self._exps)))
         # eval batch
         states = np.stack([s['state'] for s in sample])
-        actions = np.stack([s['action'] for s in sample]).astype(np.int32)
-        y = C.Variable(np.stack([self._target(s) for s in sample]).astype(np.float32))
+        actions = C.cuda.to_gpu(np.stack([s['action'] for s in sample]).astype(np.int32))
+        y = self._target(sample)
         # calc loss
         self._model.cleargrads()
         states = np.moveaxis(states, 3, 1)
-        qs = self._model(C.Variable(states))
+        qs = self._model(C.Variable(C.cuda.to_gpu(states)))
         q = qs[np.arange(len(sample)), actions]
+        q = C.functions.select_item(qs, actions)
         loss = C.functions.mean_squared_error(y, q)
         loss.backward()
         self._optim.update()
         self._update_count += 1
         if self._update_freq > 1 and self._update_count % self._update_freq == 0:
             self._target_model.copyparams(self._model)
-        return np.asscalar(loss.data)
+            self._target_model.to_gpu()
+        return np.asscalar(C.cuda.to_cpu(loss.data))
 
     def eval_q(self, states):
         qs = self._model(C.Variable(states)).data
@@ -136,34 +148,19 @@ class Agent:
 
 
 def eval_states(agent):
-    # from https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py#L31 noqa
-    theta_limit = 10 * 2 * np.pi / 360
-    n = 7
-    thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
-    states = np.array([[0.0, 0.0, theta, 0.0]
-                       for theta in thetas],
-                      dtype=np.float32)
-    print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
-                                 for x in states[:, 2] * 360 / 2 / np.pi]))
-    qs = agent.eval_q(states)
-    a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
-    print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
-                                 for l, r in qs]))
-    print('Eval Q    ', ''.join(['[{:5.2f}{}{:5.2f}]'.format(l, y, r)
-                                 for (l, r), y in zip(qs, a)]))
+    raise NotImplementedError()
 
 
 def print_params(chain):
     for path, param in chain.namedparams():
         print(path, param)
 
-
-# In[ ]:
-
 env = gym.make(env_name)
 env.seed(0)
 
-agent = Agent(env.observation_space.shape, env.action_space.n)
+agent = Agent(env.observation_space.shape,
+              env.action_space.n,
+              env.observation_space.sample())
 
 state = None
 for i in range(exp_init_size):
@@ -176,18 +173,22 @@ for i in range(exp_init_size):
     agent.store(state, action, reward, next_state)
     state = next_state
 
-env = gym.wrappers.Monitor(env, directory='out', force=True)
+env = gym.wrappers.Monitor(env, directory='out', force=True,
+                           video_callable=lambda ep: True)
 
 for ep in range(n_episodes):
     state = env.reset()
     done = False
+    t_ep_start = time.time()
     while not done:
         state, reward, done, _ = env.step(agent.act(np.array(state, dtype=np.float32)))
         state = np.array(state, dtype=np.float32)
         agent.reward(reward, None if done else state)
+    t = time.time() - t_ep_start#XXX
+    steps = env.get_episode_lengths()[-1]#XXX
+    print('episode', ep, 'duration', t, 'steps', steps, 'steps/sec', t / steps)#XXX
     if ep % eval_period == 0:
         ep_lengths = env.get_episode_lengths()[-eval_period:]
         print('-' * 11)
         if ep:
             print('episodes', ep - eval_period, '-', ep, 'steps', ' '.join(map(str, ep_lengths)))
-        #XXX nope eval_states(agent)
