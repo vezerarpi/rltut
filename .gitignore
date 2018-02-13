@@ -2,3 +2,5 @@
 .notebook-password
 out/
 local/
+__pycache__
+*.pyc

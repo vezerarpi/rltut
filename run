@@ -26,6 +26,7 @@ def notebook():
     sh('docker rm -f rltut-notebook || true')
     sh('docker run -d --name rltut-notebook -p 6767:6767'
        ' -v `pwd`:/work -w /work'
+       ' -e PYTHONPATH=/work'
        ' rltut'
        ' bash -c \'Xvfb -screen 0 1400x900x24 :99 &'
        ' DISPLAY=:99 jupyter notebook --port=6767 --ip="*"'
