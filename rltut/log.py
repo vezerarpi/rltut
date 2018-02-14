@@ -7,6 +7,7 @@ import gym
 import json
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def create_directory(name='out', autoincrement=False, replace=True):
@@ -46,7 +47,7 @@ def create_directory(name='out', autoincrement=False, replace=True):
     return name
 
 
-# Logging
+# Log recoding
 
 class PrintLogger:
     def log(self, key, value):
@@ -73,16 +74,53 @@ class JsonLogger:
         self._log.flush()
 
 
+# Log loading/plotting
+
 def load(f):
     with open('../out/log.jsonl') as f:
         return pd.DataFrame.from_dict([json.loads(line) for line in f])
 
 
-def show(f):
-    return sns.lmplot(
-        data=load(f),
-        x='t', y='value', row='key',
-        fit_reg=False, size=5, aspect=2, markers='.', sharey=False)
+def plot(data, nsmooth=None, point_alpha=None, ax=None):
+    '''Plot datapoints & smoothed curve for elements of d.
+    '''
+    if nsmooth is None:
+        nsmooth = int(len(data) / 50)
+    if point_alpha is None:
+        point_alpha = max(0.01, 1 - len(data) / 1000)
+    if ax is None:
+        ax = plt.figure().gca()
+    if nsmooth <= 1:
+        data.plot(x='t', y='value', ax=ax)
+    else:
+        if 0 < point_alpha:
+            data.plot(x='t', y='value', marker='.', kind='scatter',
+                      alpha=point_alpha, ax=ax)
+        y = data['value'].rolling(
+            min_periods=0, window=2 * nsmooth, win_type='gaussian'
+        ).mean(std=nsmooth)
+        plt.plot(data['t'], y)
+        d = 0.1 * (y.max() - y.min())
+        plt.ylim((y.min() - d, y.max() + d))
+    plt.ylabel('')
+    plt.xlabel('t')
+
+
+def show(f, show_points=True):
+    '''High level helper to display all traces from a log file.
+    '''
+    # Simpler version:
+    # sns.lmplot(data=load(f), x='t', y='value', row='key',
+    #            fit_reg=False, size=5, aspect=2, markers='.', sharey=False)
+    data = load(f)
+    keys = sorted(set(data.key))
+    plt.figure(figsize=(10, 6 * len(keys)))
+    for row, key in enumerate(keys):
+        plt.subplot(len(keys), 1, row + 1)
+        plot(data[data.key == key],
+             point_alpha=(None if show_points else 0),
+             ax=plt.gca())
+        plt.legend([key])
 
 
 # Monitoring
