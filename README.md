@@ -40,4 +40,4 @@ This has been training on a laptop overnight, using a only a scaled down image o
 ![Breakout 400 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000600.gif)
 
 ### 600 Games
-![Breakout 600 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000600.gif)
+![Breakout 600 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000580.gif)
