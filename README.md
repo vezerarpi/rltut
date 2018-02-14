@@ -12,21 +12,8 @@ We'll start with a simple game whose state is easy to visualise and hopefully is
 
 Iterations | 9 | 64 | 100 | 200
 ---|---|---|---|---
-![CartPole 9 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif) | ![CartPole 64 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif) | ![CartPole 100 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif) | ![CartPole 200 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif) |
+ | ![CartPole 9 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif | width=160) | ![CartPole 64 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif | width=160) | ![CartPole 100 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif | width=160) | ![CartPole 200 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif | width=160) |
 
-
-
-### 9 Iterations
-![CartPole 9 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif)
-
-### 64 Iterations
-![CartPole 64 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif)
-
-### 100 Iterations
-![CartPole 100 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif)
-
-### 200 Iterations
-![CartPole 200 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif)
 
 ## Further Work: Breakout
 Once your program has mastered CartPole you could try an Atari game like Breakout.
@@ -34,16 +21,16 @@ Once your program has mastered CartPole you could try an Atari game like Breakou
 This has been training on a laptop overnight, using a only a scaled down image of each frame (scaled to improve training time).
 
 ### 10 Games
-![Breakout 10 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000010.gif)
+![Breakout 10 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000010.gif | width=160)
 
 ### 100 Games
-![Breakout 100 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000080.gif)
+![Breakout 100 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000080.gif | width=160)
 
 ### 200 Games
-![Breakout 200 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000200.gif)
+![Breakout 200 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000200.gif | width=160)
 
 ### 400 Games
-![Breakout 400 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000600.gif)
+![Breakout 400 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000600.gif | width=160)
 
 ### 600 Games
-![Breakout 600 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000580.gif)
+![Breakout 600 Episodes](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/openaigym.video.0.36495.video000580.gif | width=160)
