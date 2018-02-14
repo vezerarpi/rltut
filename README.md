@@ -10,6 +10,15 @@ No setup required, no prior reinforcement learning or deep learning knowledge re
 
 We'll start with a simple game whose state is easy to visualise and hopefully is easy to solve for your program.
 
+Iterations | 9 | 64 | 100 | 200
+---|---|---|---|---
+![CartPole 9 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif) |
+![CartPole 64 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif) |
+![CartPole 100 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif) |
+![CartPole 200 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif) |
+
+
+
 ### 9 Iterations
 ![CartPole 9 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif)
 
