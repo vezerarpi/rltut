@@ -10,9 +10,9 @@ No setup required, no prior reinforcement learning or deep learning knowledge re
 
 We'll start with a simple game whose state is easy to visualise and hopefully is easy to solve for your program.
 
-Iterations | 9 | 64 | 100 | 200
----|---|---|---|---
-| | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif" width="160"> |
+Iterations | 9 | 64 | 100 | 200 | 300
+---|---|---|---|---|---
+| | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000300.gif" width="160"> |
 
 
 ## Further Work: Breakout
