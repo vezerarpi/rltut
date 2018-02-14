@@ -12,7 +12,7 @@ We'll start with a simple game whose state is easy to visualise and hopefully is
 
 Iterations | 9 | 64 | 100 | 200
 ---|---|---|---|---
- | ![CartPole 9 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif | width=160) | ![CartPole 64 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif | width=160) | ![CartPole 100 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif | width=160) | ![CartPole 200 Iterations](https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif | width=160) |
+ | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000009.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000064.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000100.gif" width="160"> | <img src="https://github.com/vezerarpi/rltut/blob/ideas-fair/assets/ideas-fair/cartpole/openaigym.video.0.3537.video000200.gif" width="160"> |
 
 
 ## Further Work: Breakout
