@@ -1,6 +1,7 @@
 # coding: utf-8
 import operator
 import random
+import scipy.misc
 import time
 
 import gym
@@ -21,13 +22,13 @@ class Model(C.Chain):
     def __init__(self, observation_shape, n_actions):
         super().__init__()
         in_channels = observation_shape[2]
-        out_channels1 = 16
+        out_channels1 = 8
         kernel_size1 = 8
         stride1 = 4
-        out_channels2 = 32
+        out_channels2 = 16
         kernel_size2 = 4
         stride2 = 2
-        projection_size = 256
+        projection_size = 128
         # Chain.init_scope is necessary for gradient book-keeping to be set up
         # for all the links defined below, otherwise errors are not
         # propagated back through the graph
@@ -54,7 +55,7 @@ class Agent:
         self._update_freq = 1
         self._lr = 0.01
         self._epsilon = 1.0
-        self._gamma = C.cuda.to_gpu(np.float32(0.99))
+        self._gamma = np.float32(0.99)
         self._observation_shape = observation_shape
         self._x_shape = (-1,) + self._observation_shape
         self._n_actions = n_actions
@@ -68,10 +69,8 @@ class Agent:
         if self._update_freq > 1:
             self._target_model = Model()
             self._target_model.copyparams(self._model)
-            self._target_model.to_gpu()
         else:
             self._target_model = self._model
-            self._model.to_gpu()
         self._update_count = 0
         # self._optim = C.optimizers.SGD(lr=self._lr)
         self._optim = C.optimizers.RMSprop(lr=self._lr)
@@ -89,22 +88,20 @@ class Agent:
             self._last_act = rng.choice([0, 1])
         else:
             x = self._prepare_input(state)
-            self._last_act = np.argmax(C.cuda.to_cpu(self._model(C.Variable(C.cuda.to_gpu(x))).data))
+            self._last_act = np.argmax(self._model(C.Variable(x)).data)
         self._state = state
         return self._last_act
 
     def _target(self, experiences):
         # y = reward + gamma * Qmax(action, next_state)
-        y = C.cuda.to_gpu(np.array([e['reward'] for e in experiences],
-                                   dtype=np.float32))
-        done_list = np.array([e['next_state'] is None for e in experiences],
-                             dtype=np.float32)
-        done = C.cuda.to_gpu(done_list)
+        y = np.array([e['reward'] for e in experiences], dtype=np.float32)
+        done = np.array([e['next_state'] is None for e in experiences],
+                        dtype=np.float32)
         next_states = np.stack([e['next_state'] if e['next_state'] is not None
                                 else self._dummy_state for e in experiences])
         # next state x
         x = self._prepare_input(next_states)
-        q = self._target_model(C.Variable(C.cuda.to_gpu(x)))
+        q = self._target_model(C.Variable(x))
         estimate = C.functions.max(q, axis=1).data
         estimate = self._gamma * done
         y += estimate
@@ -124,12 +121,12 @@ class Agent:
         sample = rng.sample(self._exps, k=min(batch_size, len(self._exps)))
         # eval batch
         states = np.stack([s['state'] for s in sample])
-        actions = C.cuda.to_gpu(np.stack([s['action'] for s in sample]).astype(np.int32))
+        actions = np.stack([s['action'] for s in sample]).astype(np.int32)
         y = self._target(sample)
         # calc loss
         self._model.cleargrads()
         states = np.moveaxis(states, 3, 1)
-        qs = self._model(C.Variable(C.cuda.to_gpu(states)))
+        qs = self._model(C.Variable(states))
         q = qs[np.arange(len(sample)), actions]
         q = C.functions.select_item(qs, actions)
         loss = C.functions.mean_squared_error(y, q)
@@ -138,8 +135,7 @@ class Agent:
         self._update_count += 1
         if self._update_freq > 1 and self._update_count % self._update_freq == 0:
             self._target_model.copyparams(self._model)
-            self._target_model.to_gpu()
-        return np.asscalar(C.cuda.to_cpu(loss.data))
+        return np.asscalar(loss.data)
 
     def eval_q(self, states):
         qs = self._model(C.Variable(states)).data
@@ -155,12 +151,22 @@ def print_params(chain):
     for path, param in chain.namedparams():
         print(path, param)
 
+
 env = gym.make(env_name)
 env.seed(0)
 
+
+def scale_img(img):
+    h = env.observation_space.shape[0] // 2
+    w = env.observation_space.shape[1] // 2
+    return scipy.misc.imresize(img, (h, w)).astype(dtype=np.float32)
+
+
+dummy_state = env.observation_space.sample()
+dummy_state = scale_img(dummy_state)
 agent = Agent(env.observation_space.shape,
               env.action_space.n,
-              env.observation_space.sample())
+              dummy_state)
 
 state = None
 for i in range(exp_init_size):
@@ -169,19 +175,23 @@ for i in range(exp_init_size):
         state = np.array(state, dtype=np.float32)
     action = rng.choice([0, 1])
     next_state, reward, done, _ = env.step(action)
+    state = scale_img(state)
+    next_state = scale_img(next_state)
     next_state = None if done else np.array(next_state, dtype=np.float32)
     agent.store(state, action, reward, next_state)
     state = next_state
 
 env = gym.wrappers.Monitor(env, directory='out', force=True,
-                           video_callable=lambda ep: True)
+                           video_callable=lambda ep: ep % 10 == 0)
 
 for ep in range(n_episodes):
     state = env.reset()
+    state = scale_img(state)
     done = False
     t_ep_start = time.time()
     while not done:
         state, reward, done, _ = env.step(agent.act(np.array(state, dtype=np.float32)))
+        state = scale_img(state)
         state = np.array(state, dtype=np.float32)
         agent.reward(reward, None if done else state)
     t = time.time() - t_ep_start#XXX
