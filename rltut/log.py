@@ -49,12 +49,16 @@ def create_directory(name='out', autoincrement=False, replace=True):
 # Log recoding
 
 class PrintLogger:
+    '''A substitute for JsonLogger to log to terminal, useful for testing.
+    '''
     def log(self, key, value):
         value = float(value.data if hasattr(value, 'data') else value)
         print('{}: {}'.format(key, value))
 
 
 class JsonLogger:
+    '''Logs scalar events to a simple jsonlines file.
+    '''
     def __init__(self, path):
         self._log = open(path, 'w')
         self._t0 = time.time()
@@ -75,8 +79,10 @@ class JsonLogger:
 
 # Log loading/plotting
 
-def load(f):
-    with open('../out/log.jsonl') as f:
+def load(name):
+    '''Load a log file as a Pandas DataFrame.
+    '''
+    with open(name) as f:
         return pd.DataFrame.from_dict([json.loads(line) for line in f])
 
 
@@ -86,7 +92,7 @@ def plot(data, nsmooth=None, point_alpha=None, ax=None):
     if nsmooth is None:
         nsmooth = int(len(data) / 50)
     if point_alpha is None:
-        point_alpha = max(0.01, 1 - len(data) / 1000)
+        point_alpha = max(0.05, 1 / (1 + len(data) / 2000))
     if ax is None:
         ax = plt.figure().gca()
     if nsmooth <= 1:
@@ -142,13 +148,15 @@ class Monitor(gym.wrappers.Monitor):
     def _after_reset(self, observation):
         super()._after_reset(observation)
 
-        lengths = self.get_episode_lengths()
+        lengths = self.stats_recorder.episode_lengths
         if self._logged < len(lengths):
-            rewards = self.get_episode_rewards()
+            TYPEMAP = dict(t='training', e='evaluation')
+            types = self.stats_recorder.episode_types
+            rewards = self.stats_recorder.episode_rewards
             for i in range(self._logged, len(lengths)):
-                self.logger.log('episode.length', lengths[i])
+                self.logger.log(TYPEMAP[types[i]] + '.length', lengths[i])
             for i in range(self._logged, len(rewards)):
-                self.logger.log('episode.reward', rewards[i])
+                self.logger.log(TYPEMAP[types[i]] + '.reward', rewards[i])
             self._logged = len(lengths)
 
         now = time.time()
