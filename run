@@ -13,8 +13,15 @@ def build():
     sh('docker build --rm -t rltut .')
 
 
+def _docker_cmd():
+    return ('docker'
+            if subprocess.call(['which', 'nvidia-docker']) else
+            'nvidia-docker')
+
+
 def run(command):
-    sh('docker run --rm -it rltut {command}',
+    sh('{docker} run --rm -it rltut {command}',
+       docker=_docker_cmd(),
        command=' '.join(command))
 
 
@@ -24,13 +31,14 @@ def notebook():
         ' python3 get_ipython_password.py',
         shell=True).decode('utf-8').rstrip('\n')
     sh('docker rm -f rltut-notebook || true')
-    sh('docker run -d --name rltut-notebook -p 6767:6767'
+    sh('{docker} run -d --name rltut-notebook -p 6767:6767'
        ' -v `pwd`:/work -w /work'
        ' -e PYTHONPATH=/work'
        ' rltut'
        ' bash -c \'Xvfb -screen 0 1400x900x24 :99 &'
        ' DISPLAY=:99 jupyter notebook --port=6767 --ip="*"'
        ' --allow-root --NotebookApp.password={password}\'',
+       docker=_docker_cmd(),
        password=password)
     print('Running notebook at http://localhost:6767')
 
