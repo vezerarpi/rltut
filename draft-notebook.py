@@ -92,6 +92,20 @@ env = gym.wrappers.Monitor(env, directory=output_path, force=True,
                            video_callable=lambda ep: ep % 10 == 0)
 #TODO try the previous random actions here again but now with the monitor wrapping the env
 
+'''
+## Agents, Policies and Value functions
+
+
+Q-learning loss, expectation over $(s,a,r,s')$ drawn from the experience buffer:
+\begin{equation*}
+L_i(\theta_i) = \mathbb{E}_{(s,a,r,s')}\bigl[\bigl(r + \gamma \max_{a'}Q^{target}(s',a') - Q(s, a)\bigr)^2\bigr]
+\end{equation*}
+
+From Sutton & Barto, 2014:
+On-policy methods attempt to evaluate or improve the policy that is used to make decisions, whereas off-policy methods evaluate or improve a policy different from that used to generate the data.
+
+All learning control methods face a dilemma: They seek to learn action values con- ditional on subsequent optimal behavior, but they need to behave non-optimally in order to explore all actions (to find the optimal actions).
+'''
 #XXX
 #XXX continue writing here
 #XXX
