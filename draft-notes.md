@@ -40,7 +40,7 @@ Q^\pi(s_t,a_t) & = \mathbb{E}\bigl[r_t + \gamma r_{t+1} + \gamma^2 r_{t+2} + ...
 & = \mathbb{E}\bigl[r_t + \gamma \max_{a'}Q^\pi(s_{t+1},a') \big|  \pi \bigr]
 \end{align}
 
-$Q$ is the agent's best current estimate of the value of an action at the current state and can be recursively defined as the expected value of the current reward plus the discounted estimate of the best next action at the next state (resulting from the chosen action $a$). This function can be learnt iteratively by repeatedly playing the game to sample many $(s, a, r, s`)$ experiences and then using those experiences to improve the estimates of $Q$.
+$Q$ is the agent's best current estimate of the value of an action at the current state and can be recursively defined as the expected value of the current reward plus the discounted estimate of the best next action at the next state (resulting from the chosen action $a$). This function can be learnt iteratively by repeatedly playing the game to sample many $(s, a, r, s')$ experiences and then using those experiences to improve the estimates of $Q$.
 
 The policy $\pi$ can be extracted from $Q$ by always taking the action with the maxcimal expected value at each time step.
 
