@@ -23,4 +23,11 @@ Reinforcement Learning Tutorial (Draft)
 
     # Take note of the IP returned from az vm create:
     ssh ubuntu@IPADDRESS
-    docker ps
+    git clone https://github.com/vezerarpi/rltut.git
+    cd rltut
+    ./run build
+    ./run prepare alfred betty charlie ...
+    ./run start
+
+    # To clean up
+    az group delete --name rltut
