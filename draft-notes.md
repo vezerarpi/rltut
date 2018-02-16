@@ -57,3 +57,25 @@ The Q function can be approximated by a neural network, which is usually configu
 
 If we just use the current experience $(s,a,r,s')$ to update our Q function then it could suffer from overfitting to just the local parts of the state space that the agent is currently in, as each experience will be highly correlated to those around it. The DQN paper introduced the idea of an experience replay buffer to try to overcome this by calculating each Q function update based on a large number of experiences at once. Each experience the agent observes while playing the game is added to the buffer and instead of calculating the loss for the current experience, a *batch* of experiences sampled from the buffer is used instead. The function is updated using the average loss across all examples in the batch.
 
+## Simplified DQN algorithm
+
+```
+Initialise replay buffer D
+Initialise Q function with random weights w
+for episode = 1, M:
+    Initialise the environment and the initial state
+    for t = 1, T:
+        With probability eps selct a random action a_t
+        otherwise select a_t = argmax(Q(state)) over possible actions a
+        Execute action a_t in the environment and observe next_state, r_t, done
+        Store (state, a_t, r_t, next_state, done) in D
+        Sample a batch_size batch of experiences (s_j, a_j, r_j, s_j+1, done) from D
+        Set loss = 0
+        For each experience in batch:
+            set y = r_j if done else
+                    r_j + gamma * max(Q(s_j+1))
+            loss += (y_j - Q(s_j)[a_j])**2
+        loss /= batch_size
+        Perform a gradient update step on the loss wrt the weights w
+        if done: break
+```
