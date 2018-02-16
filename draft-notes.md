@@ -17,7 +17,7 @@ Both the agent and environment can be stochastic.
 
 ## The environment, states and actions
 
-The environment generally regarded as a black box in RL. As mentioned above the agent only observes the state $s_t$ returned by the environment and chooses and action $a_t$ to perform from among a pre-defined set of actions. After taking an action the environment is updated and returns the next state $s_{t+1}$ and a reward value $r_t$. This is repeated until the environment reaches a terminal state, at which point the environment is reset to some inital state and the process starts again. A series of steps from inital state to terminal state is called an episode.
+The environment is generally regarded as a black box in RL. As mentioned above the agent only observes the state $s_t$ returned by the environment and chooses and action $a_t$ to perform from among a pre-defined set of actions. After taking an action the environment is updated and returns the next state $s_{t+1}$ and a reward value $r_t$. This is repeated until the environment reaches a terminal state, at which point the environment is reset to some inital state and the process starts again. A series of steps from inital state to terminal state is called an episode.
 
 ## Rewards, policies and value functions
 
