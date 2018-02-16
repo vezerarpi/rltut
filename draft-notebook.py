@@ -84,7 +84,7 @@ env = gym.wrappers.Monitor(env, directory=output_path, force=True,
 
 We will define an Agent class to manage the selection of actions, tracking the current experience and the updates of the parameters of Q-function model.
 '''
-from . import model
+from .examples import model
 
 
 class Agent:
@@ -119,6 +119,9 @@ class Agent:
 ## Training loop
 
 '''
+from .examples import log
+
+
 n_episodes = 1000
 # number of episodes after which to print q function evaluation
 eval_period = 20
