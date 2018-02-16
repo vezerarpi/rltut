@@ -64,7 +64,7 @@ def prepare(users, work):
             # Copy in a tutorial notebook from Docker
             subprocess.check_call((
                 'docker run --rm -it -v {work}:/work rltut'
-                ' sh -c "cp /examples/*.ipynb /work/{user}'
+                ' sh -c "cp /examples/* /work/{user}'
                 ' && chmod -R ugo+rw /work/{user}"'
             ).format(work=os.path.abspath(work),
                      user=user),
