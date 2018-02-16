@@ -34,7 +34,7 @@ A policy $\pi(s)$ is the probability of taking an action $a$ at state $s$, $\pi(
 As the agent ineracts with the environment it creates a sequence of states, actions and rewards, referred to as a trajectory $[s_0, a_0, r_0, s_1, a_1, r_1, ..., s_\$]$. Most RL algorithms work on subsequences of trajectories, for example the tuple $(s,a,r,s')$ covering a current state, chosen action, observed reward and the next state that resulted. These experiences could cover multiple time steps but here we will only consider a single step and its resulting next state.
 
 ### The Q function
-For a given policy, state-action value function $Q(s, a)$ represents the value all future rewards from taking action $a$ at state $s$ and then continuing to the follow the policy.
+For a given policy, the state-action value function $Q(s, a)$ represents the value of all future rewards from taking action $a$ at state $s$ and then continuing to the follow the policy.
 \begin{align}
 Q^\pi(s_t,a_t) & = \mathbb{E}\bigl[r_t + \gamma r_{t+1} + \gamma^2 r_{t+2} + ... \big|  \pi \bigr]\\
 & = \mathbb{E}\bigl[r_t + \gamma \max_{a'}Q^\pi(s_{t+1},a') \big|  \pi \bigr]
