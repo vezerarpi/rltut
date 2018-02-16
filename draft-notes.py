@@ -16,11 +16,15 @@ The agent observes the current state of the environment and chooses and action, 
 
 Both the agent and environment can be stochastic.
 
-## Policies and Value functions
+## The environment, states and actions
+
+The environment generally regarded as a black box in RL. As mentioned above the agent only observes the state $s_t$ returned by the environment and chooses and action $a_t$ to perform from among a pre-defined set of actions. After taking an action the environment is updated and returns the next state $s_{t+1}$ and a reward value $r_t$. This is repeated until the environment reaches a terminal state, at which point the environment is reset to some inital state and the process starts again. A series of steps from inital state to terminal state is called an episode.
+
+## Rewards, policies and value functions
 
 ### Rewards and returns
 
-The agent recieves a reward value after step in the environment. The total return at a time $t$ is $R_t = \sum^\infty_{k=0} \gamma^k r_{t+k}$, the discounted sum of all future rewards using a discount factor $\gamma$ (e.g. 0.99). This way the return at each time step captures the rewards from subsequent actions and by keeping track of these an agent can choose between actions by considering which one it expects to get the best return for.
+The agent recieves a reward value after each step in the environment. The total return at a time $t$ is $R_t = \sum^\infty_{k=0} \gamma^k r_{t+k}$, the discounted sum of all future rewards using a discount factor $\gamma$ (e.g. 0.99). This way the return at each time step captures the rewards from subsequent actions and by keeping track of these an agent can choose between actions by considering which one it expects to get the best return for.
 
 ### Policies
 
