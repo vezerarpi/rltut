@@ -81,7 +81,10 @@ env = gym.wrappers.Monitor(env, directory=output_path, force=True,
 
 '''
 ## Agent
+
+We will define an Agent class to manage the selection of actions, tracking the current experience and the updates of the parameters of Q-function model.
 '''
+from . import model
 
 
 class Agent:
@@ -91,6 +94,7 @@ class Agent:
          * a model
          * an optimiser
         '''
+        self._model = model.CartPoleModel()
 
     def act(self, state):
         '''
