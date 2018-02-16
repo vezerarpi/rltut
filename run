@@ -2,6 +2,7 @@
 
 import subprocess
 import argparse
+import os
 
 
 def sh(cmd, **args):
@@ -43,16 +44,70 @@ def notebook():
     print('Running notebook at http://localhost:6767')
 
 
+def prepare(users, work):
+    if not os.path.isdir(work):
+        os.makedirs(work)
+
+    with open(os.path.join(work, 'users.txt'), 'w') as f:
+        admin_password = input('Type admin password: ').rstrip('\n')
+        f.write('admin:{password}::::/work/admin:\n'.format(
+            password=admin_password))
+        for user in users:
+            # Add the user to the list
+            f.write('U:U::::/work/U:\n'.replace('U', user))
+
+            # Create a home directory locally
+            home = os.path.join(work, user)
+            if not os.path.isdir(home):
+                os.makedirs(home)
+
+            # Copy in a tutorial notebook from Docker
+            subprocess.check_call((
+                'docker run --rm -it -v {work}:/work rltut'
+                ' sh -c "cp /examples/*.ipynb /work/{user}'
+                ' && chmod -R ugo+rw /work/{user}"'
+            ).format(work=os.path.abspath(work),
+                     user=user),
+                                  shell=True)
+
+
+def start(work, num_threads):
+    subprocess.check_call((
+        'docker run --detach --name rltut -p 80:80'
+        ' -e "OPENBLAS_NUM_THREADS={nthreads}"'
+        ' -v {work}:/work -w /work'
+        ' rltut'
+        ' sh -c "newusers < users.txt'
+        ' ; jupyterhub --port 80 --ip=*'
+        ' -f /etc/jupyterhub/jupyterhub_config.py"'
+    ).format(nthreads=num_threads,
+             work=os.path.abspath(work)),
+                          shell=True)
+
+
 parser = argparse.ArgumentParser(
     description='Runner script for rltut'
 )
 parser.set_defaults(action=lambda: parser.print_help())
 subs = parser.add_subparsers()
+
 subs.add_parser('build').set_defaults(action=build)
+
 subs.add_parser('notebook').set_defaults(action=notebook)
+
 p = subs.add_parser('run')
 p.add_argument('command', nargs='*')
 p.set_defaults(action=run)
+
+p = subs.add_parser('prepare')
+p.add_argument('users', nargs='*')
+p.add_argument('--work', default='work')
+p.set_defaults(action=prepare)
+
+p = subs.add_parser('start')
+p.add_argument('--work', default='work')
+p.add_argument('--num-threads', default=2)
+p.set_defaults(action=start)
 
 args = vars(parser.parse_args())
 action = args.pop('action')

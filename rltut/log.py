@@ -69,9 +69,10 @@ def video(path):
             raise ValueError('No videos found in directory "{path}"'.format(
                 path=path))
         path = max(videos, key=os.path.getmtime)
-    subpath = os.path.relpath(os.path.abspath(path), os.getenv('PWD'))
+    # subpath = os.path.relpath(os.path.abspath(path), os.getenv('PWD'))
+    subpath = os.path.relpath(os.path.abspath(path), os.getcwd())
     return IPython.display.HTML("""
-    <video src="/notebooks/{subpath}" controls autoplay></video>
+    <video src="{subpath}" controls autoplay></video>
     <p>{subpath}</p>
     """.format(subpath=subpath))
 
