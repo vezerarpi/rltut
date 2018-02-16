@@ -1,4 +1,3 @@
-'''
 # Deep Reinforcement Learning Tutorial
 
 ## Introduction
@@ -58,4 +57,3 @@ The Q function can be approximated by a neural network, which is usually configu
 
 If we just use the current experience $(s,a,r,s')$ to update our Q function then it could suffer from overfitting to just the local parts of the state space that the agent is currently in, as each experience will be highly correlated to those around it. The DQN paper introduced the idea of an experience replay buffer to try to overcome this by calculating each Q function update based on a large number of experiences at once. Each experience the agent observes while playing the game is added to the buffer and instead of calculating the loss for the current experience, a *batch* of experiences sampled from the buffer is used instead. The function is updated using the average loss across all examples in the batch.
 
-'''
