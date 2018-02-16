@@ -41,7 +41,7 @@ The `gym.make()` function creates environment by name, in this case `'CartPole-v
 '''
 env = gym.make('CartPole-v0')
 print('observation space', env.observation_space)
-print('action space', env.action_space, 'action_space.n', action_space.n)
+print('action space', env.action_space, 'action_space.n', env.action_space.n)
 state = env.reset()
 print('state', state)
 
@@ -77,135 +77,52 @@ Gym can output videos of episodes, which for CartPole can be played in real time
 '''
 env = gym.wrappers.Monitor(env, directory=output_path, force=True,
                            video_callable=lambda ep: ep % 10 == 0)
-#TODO try the previous random actions here again but now with the monitor wrapping the env
+# TODO try the previous random actions here again but now with the monitor wrapping the env
 
-#XXX
-#XXX continue writing here
-#XXX
+'''
+## Agent
+'''
+
 
 class Agent:
     def __init__(self):
-        # number of steps after which to update parameters of the target model
-        self._update_freq = 1
-        self._lr = 0.01
-        self._epsilon = 1.0
-        self._gamma = 0.95
-        # experience buffer
-        # {'state', 'action', 'reward', 'next_state'}
-        self._exps = []
-        self._last_act = 0
-        self._state = None
-        self._model = model.CartPoleModel()
-        if self._update_freq > 1:
-            self._target_model = model.CartPoleModel()
-            self._target_model.copyparams(self._model)
-        else:
-            self._target_model = self._model
-        self._update_count = 0
-        self._optim = C.optimizers.SGD(lr=self._lr)
-        # self._optim = C.optimizers.RMSprop(lr=self._lr)
-        self._optim.setup(self._model)
+        '''
+        Create an agent containing
+         * a model
+         * an optimiser
+        '''
 
     def act(self, state):
-        if rng.random() < self._epsilon:
-            self._last_act = rng.choice([0, 1])
-        else:
-            x = state.reshape((1, -1))
-            self._last_act = np.argmax(self._model(C.Variable(x)).data)
-        self._state = state
-        return self._last_act
+        '''
+        Returns an action (as an int) for the current state. Keeps track of the state and the action taken for use in the next call to reward(). The action is chosen e-greedily (a random action is taken with probability e).
 
-    def _target(self, experience):
-        # y = reward + gamma * Qmax(action, next_state)
-        y = np.float32(experience['reward'])
-        if experience['next_state'] is not None:
-            # next state x
-            x = experience['next_state'].reshape((1, -1)).astype(np.float32)
-            y += self._gamma * np.max(self._target_model(C.Variable(x)).data)
-        return y
-
-    def _make_exp(self, state, action, reward, next_state):
-        return dict(state=state, action=action, reward=reward, next_state=next_state)
-
-    def store(self, state, action, reward, next_state):
-        self._exps.append(self._make_exp(state, action, reward, next_state))
+         - state a np.array representing the current observed state
+         - return the selected action
+        '''
 
     def reward(self, reward, next_state):
-        self._epsilon -= 1e-3
-        self._exps.append(self._make_exp(self._state, self._last_act, reward, next_state))
-        batch_size = 64
-        # sample a batch
-        sample = rng.sample(self._exps, k=min(batch_size, len(self._exps)))
-        # eval batch
-        states = np.stack([s['state'] for s in sample])
-        actions = np.stack([s['action'] for s in sample]).astype(np.int32)
-        y = C.Variable(np.stack([self._target(s) for s in sample]).astype(np.float32))
-        # calc loss
-        self._model.cleargrads()
-        qs = self._model(C.Variable(states))
-        q = qs[np.arange(len(sample)), actions]
-        loss = C.functions.mean_squared_error(y, q)
-        loss.backward()
-        self._optim.update()
-        self._update_count += 1
-        if self._update_freq > 1 and self._update_count % self._update_freq == 0:
-            self._target_model.copyparams(self._model)
-        return np.asscalar(loss.data)
+        '''
+        Takes the reward for the alt action and the resulting next_state, calculates the Q-learning loss and performs a parameter update on the model.
 
-    def eval_q(self, states):
-        qs = self._model(C.Variable(states)).data
-        self._model.cleargrads()
-        return qs
+         - reward a float, the reward for the latest act()
+         - next_state a np.array containing the observed next state resulting
+         from the latest act()
+         - return None
+        '''
 
 
-def eval_states(agent):
-    # from https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py#L31 noqa
-    theta_limit = 10 * 2 * np.pi / 360
-    n = 7
-    thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
-    states = np.array([[0.0, 0.0, theta, 0.0]
-                       for theta in thetas],
-                      dtype=np.float32)
-    print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
-                                 for x in states[:, 2] * 360 / 2 / np.pi]))
-    qs = agent.eval_q(states)
-    a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
-    print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
-                                 for l, r in qs]))
-    print('Eval Q    ', ''.join(['[{:5.2f}{}{:5.2f}]'.format(l, y, r)
-                                 for (l, r), y in zip(qs, a)]))
+'''
+## Training loop
 
-
-def print_params(chain):
-    for path, param in chain.namedparams():
-        print(path, param)
-
-
-exp_init_size = 500
-n_episodes = 8000
+'''
+n_episodes = 1000
 # number of episodes after which to print q function evaluation
 eval_period = 20
 
-agent = Agent()
-print([agent.act(np.ones(4, dtype=np.float32)) for i in range(50)])
-agent.reward(1.0, np.ones(4, dtype=np.float32))
-
 env = gym.make('CartPole-v0')
+env = gym.wrappers.Monitor(env, directory=output_path, force=True)
 env.seed(0)
 agent = Agent()
-
-state = None
-for i in range(exp_init_size):
-    if state is None:
-        state = env.reset()
-        state = np.array(state, dtype=np.float32)
-    action = rng.choice([0, 1])
-    next_state, reward, done, _ = env.step(action)
-    next_state = None if done else np.array(next_state, dtype=np.float32)
-    agent.store(state, action, reward, next_state)
-    state = next_state
-
-env = gym.wrappers.Monitor(env, directory='out', force=True)
 
 for ep in range(n_episodes):
     state = env.reset()
@@ -219,4 +136,3 @@ for ep in range(n_episodes):
         print('-' * 11)
         if ep:
             print('episodes', ep - eval_period, '-', ep, 'steps', ' '.join(map(str, ep_lengths)))
-        eval_states(agent)
