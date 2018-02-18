@@ -17,3 +17,42 @@ class CartPoleModel(C.Chain):
     def __call__(self, state):
         h = C.functions.relu(self.l1(state))
         return self.l2(h)
+
+
+class AtariModel(C.Chain):
+    '''
+    A small, 2 layer convolutiuonal model for learning to play Atari games,
+    e.g. 'Breakout-v4'. See 'Asynchronous Methods for Deep REinforcement Learning
+    (https://arxiv.org/abs/1602.01783) for details.
+    '''
+    def __init__(self, observation_shape, n_actions):
+        super().__init__()
+        in_channels = observation_shape[2]
+        # The convolution channels and projection size are halved here compared
+        # to the experimants in https://arxiv.org/abs/1602.01783 in order to be
+        # fast enough to train on a CPU in reasonable time (still slow though)
+        out_channels1 = 8
+        kernel_size1 = 8
+        stride1 = 4
+        out_channels2 = 16
+        kernel_size2 = 4
+        stride2 = 2
+        projection_size = 128
+        # Chain.init_scope is necessary for gradient book-keeping to be set up
+        # for all the links defined below, otherwise errors are not
+        # propagated back through the graph
+        with self.init_scope():
+            self.conv1 = C.links.Convolution2D(in_channels, out_channels1,
+                                               kernel_size1, stride1,
+                                               nobias=True)
+            self.conv2 = C.links.Convolution2D(out_channels1, out_channels2,
+                                               kernel_size2, stride2,
+                                               nobias=True)
+            self.projection = C.links.Linear(None, projection_size)
+            self.action_values = C.links.Linear(projection_size, n_actions)
+
+    def __call__(self, state):
+        z1 = C.functions.relu(self.conv1(state))
+        z2 = C.functions.relu(self.conv2(z1))
+        z3 = C.functions.relu(self.projection(z2))
+        return self.action_values(z3)

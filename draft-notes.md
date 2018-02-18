@@ -34,7 +34,7 @@ A policy $\pi(s)$ is the probability of taking an action $a$ at state $s$, $\pi(
 As the agent ineracts with the environment it creates a sequence of states, actions and rewards, referred to as a trajectory $[s_0, a_0, r_0, s_1, a_1, r_1, ..., s_\$]$. Most RL algorithms work on subsequences of trajectories, for example the tuple $(s,a,r,s')$ covering a current state, chosen action, observed reward and the next state that resulted. These experiences could cover multiple time steps but here we will only consider a single step and its resulting next state.
 
 ### The Q function
-For a given policy, the state-action value function $Q(s, a)$ represents the value of all future rewards from taking action $a$ at state $s$ and then continuing to the follow the policy.
+For a given policy, the action-value function $Q(s, a)$ represents the value of all future rewards from taking action $a$ at state $s$ and then continuing to the follow the policy.
 \begin{align}
 Q^\pi(s_t,a_t) & = \mathbb{E}\bigl[r_t + \gamma r_{t+1} + \gamma^2 r_{t+2} + ... \big|  \pi \bigr]\\
 & = \mathbb{E}\bigl[r_t + \gamma \max_{a'}Q^\pi(s_{t+1},a') \big|  \pi \bigr]
@@ -52,6 +52,8 @@ L_i(\theta_i) = \mathbb{E}_{(s,a,r,s')}\bigl[\bigl(r + \gamma \max_{a'}Q(s',a') 
 \end{equation*}
 
 The Q function can be approximated by a neural network, which is usually configured to output the estimated value for all actions at the current state in one go: `action_values = model(curent_state)`. This neural network is updated using the loss function above. The $Q$ estimates improve as more and more experiences are sampled. This is because after a very strong reward signal has been experienced at $(s', a^\text{bad})$, the model will have knowledge of the bad value of $Q(s', a^\text{bad})$ the next time it experiences $(s,a,r,s')$, and this information therefore will be propagated backwards.
+
+A neural network can be well suited to this sort of task as it can learn a representation of the states of the environment in order to estimate the Q values for them. The state space can have a very high dimension and be complex, even for a simple Atari game, but a good, distributed representation can find similarioties between the many possible states which makes it tractable for the model to learn to associate these with Q values for actions. The model's representation of the states it sees should work analogously to word vectors in word2vec, where words that are used similarly have similar embeddings. In this way the model doesn't need to remember each individual possible state but learn a fuzzy correlation between states and Q values.
 
 ### Experience replay
 
