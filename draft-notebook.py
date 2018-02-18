@@ -1,7 +1,9 @@
 '''
 # Deep Reinforcement Learning Tutorial
 
-See the `notes.ipynb` notebook for a brief overview of the theory behind Q-learning.
+An introduction to reinforcement learning that creates an agent that learns to play the CartPole environment in OpenAI Gym using a slightly simplified version of the DQN algorithm.
+
+See the `Guide.ipynb` notebook for a brief introduction to the theory behind Q-learning.
 '''
 
 
@@ -20,8 +22,9 @@ import numpy as np
 from .examples import model, log
 
 
-# TODO replace the output path with your name, make sure it's unique
-output_path = 'out/REPLACE-ME-' + ''.join(random.choice(string.ascii_lowercase) for i in range(6))
+# TODO replace the output path with your name
+output_path = 'out/REPLACE-ME'
+# create a random number generator and seed it so runs are repeatable
 rng = random.Random()
 rng.seed(42)
 
@@ -85,9 +88,9 @@ env = log.Monitor(env, directory=output_path, print_every=1,
 '''
 ## Q-learning
 
-See the `guide.ipynb` notebook for more details on the action-value Q function and the loss used to train an agent to estimate it. We will implement the following algorithm to sample batches of experiences (transitions from the current state to a next state following an action) and compute a loss to minimise that will lead the model to learning better and better approximations of expected rewards of all possible actions from any given state.
+See the `Guide.ipynb` notebook for more details on the action-value Q function and the loss used to train an agent to estimate it. We will implement the following algorithm to sample batches of experiences (transitions from the current state to a next state following an action) and compute a loss to minimise that will lead the model to learning better and better approximations of expected rewards of the possible actions at any given state.
 
-"""
+```
 Initialise replay buffer D
 Initialise Q function with random weights w
 for episode = 1, M:
@@ -106,13 +109,12 @@ for episode = 1, M:
         loss /= batch_size
         Perform a gradient update step on the loss wrt the weights w
         if done: break
-"""
+```
 
 ## Agent
 
 We will implement the algorithm by factoring most of the logic and calculations around states, rewqards and the loss to an `Agent` class. This class will manage the selection of actions, tracking the current experience and the updates of the parameters of Q-function model.
 '''
-from .examples import model
 
 
 class Agent:
@@ -152,15 +154,24 @@ class Agent:
         # TODO Select and store an action using self._model or choosing a random
         # action with a small probability. Return the action.
 
-    def reward(self, reward, next_state):
+    def reward(self, reward, next_state, done):
         '''
-        Takes the reward for the alt action and the resulting next_state, calculates the Q-learning loss and performs a parameter update on the model.
+        Takes the reward for the last action and the resulting next_state,
+        calculates the Q-learning loss and performs a parameter update on the
+        model for a miniubatch sampled from the experience buffer.
 
-         - reward a float, the reward for the latest act()
-         - next_state a np.array containing the observed next state resulting
+          - reward a float, the reward for the latest act()
+          - next_state a np.array containing the observed next state resulting
          from the latest act()
-         - return None
+          - done a bool indicating whether the next state is a terminal state
+          - return The average loss for the latest batch
         '''
+        # TODO Append the latest experience to the replay buffer. The experience
+        # should contain (current state, action, reward, next state, done),
+        # where current state and action should have been stored by the agent on
+        # the last call to act(). It might help to store each experience as a
+        # dict so that the lookups from it are easily readable.
+
         batch_size = 64
         # TODO Sample a batch from your replay buffer. See
         # https://docs.scipy.org/doc/numpy/reference/generated/numpy.random.sample.html
@@ -200,7 +211,8 @@ class Agent:
         # array, or the actions can be selected individually and combined into a
         # batch-shaped Variable using C.functions.stack.
 
-        # TODO calculate the loss using chainer functions
+        # TODO Calculate the loss using chainer functions. Remember to take the
+        # done flag for each element of the batch into account.
         # See C.functions.mean_squared_error
         loss = # TODO see the pseudo code above or the guide for the loss
 
@@ -216,32 +228,52 @@ class Agent:
 '''
 ## Training loop
 
+Now that we have an agent we can start training it over multiple episodes of the environment.
+
+It might be useful to print out an evaluation of the model for a fixed set of states to be able to check that the values are changing and that it is beginning to behave as expected in those states.
+
+After a certain number of episodes you can use the `eval_cartpole` function to print the Q values form the model for 7 pole angles between +/-10 degrees. These Q values should increase over time as your model experiences longer episodes , and thus more rewards, when it chooses actions that help stabilise the pole. If your values are not changing from one iteration to the next then there may be a problem with the chainer code that is stopping gradient updates s from being applied back through the components of the model. These outputs are only a rough indicator of how well your model is doing. It is unlikely to ever see exactly these states so it may not have made the best decision for each of them, but if the rewards are not increasing and the Q values do not look like they are moving towards values that you would expect given the pole orientation then something is probably wrong.
 '''
-from .examples import log
+
+
+def eval_cartpole(agent):
+    '''
+    Evaluates the agent's Q-function at 7 pole angles between +/-10 degrees. The other values of the state are 0.0, so the cart is in the middle of the space and not moving and the pole currently has 0.0 velocity. Also prints indicators showing which action has the highest value at each state.
+
+    Expects agent to have a _model member that is the chainer model for its Q function.
+    '''
+    theta_limit = 10 * 2 * np.pi / 360
+    n = 7
+    thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
+    states = np.array([[0.0, 0.0, theta, 0.0]
+                       for theta in thetas],
+                      dtype=np.float32)
+    print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
+                                 for x in states[:, 2] * 360 / 2 / np.pi]))
+    qs = agent._model(C.Variable(states)).data
+    agent._model.cleargrads()
+    a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
+    print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
+                                 for l, r in qs]))
+    print('Eval Q    ', ''.join(['[{:5.2f}{}{:5.2f}]'.format(l, y, r)
+                                 for (l, r), y in zip(qs, a)]))
 
 
 n_episodes = 1000
-# number of episodes after which to print q function evaluation
-eval_period = 20
-
+# Re-initialise the Environment and Monitor
 env = gym.make('CartPole-v0')
-env = gym.wrappers.Monitor(env, directory=output_path, force=True)
+env = log.Monitor(env, directory=output_path, print_every=1,
+                  force=True, video_callable=lambda ep: ep % 10 == 0)
 env.seed(0)
 agent = Agent()
 
 for ep in range(n_episodes):
-    state = env.reset()
-    done = False
-    while not done:
-        state, reward, done, _ = env.step(agent.act(np.array(state, dtype=np.float32)))
-        state = np.array(state, dtype=np.float32)
-        agent.reward(reward, None if done else state)
-    if ep % eval_period == 0:
-        ep_lengths = env.get_episode_lengths()[-eval_period:]
-        print('-' * 11)
-        if ep:
-            print('episodes', ep - eval_period, '-', ep, 'steps', ' '.join(map(str, ep_lengths)))
+    # TODO step through the environment until done, using agent.act() and
+    # agent.reward()
 
+# TODO print the total reward after each episode, optionally also call
+# eval_cartpole() to see how the agent is learnign to estimate those particular
+# states every now and then (e.g. every 20 episodes)
 
 '''
 ## Further work
