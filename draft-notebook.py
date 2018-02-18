@@ -209,11 +209,13 @@ class Agent:
         # taken for each state, according to the sampled experiences. The
         # Chainer Variable that holds these values can be indexed like a numpy
         # array, or the actions can be selected individually and combined into a
-        # batch-shaped Variable using C.functions.stack.
+        # batch-shaped Variable using C.functions.stack. See
+        # http://docs.chainer.org/en/stable/reference/generated/chainer.functions.stack.html
 
         # TODO Calculate the loss using chainer functions. Remember to take the
         # done flag for each element of the batch into account.
         # See C.functions.mean_squared_error
+        # http://docs.chainer.org/en/stable/reference/generated/chainer.functions.mean_squared_error.html
         loss = # TODO see the pseudo code above or the guide for the loss
 
         # These two lines compute the gradient fo the calculations that we just
