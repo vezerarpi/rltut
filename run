@@ -77,9 +77,11 @@ def start(work, num_threads):
         ' -e "OPENBLAS_NUM_THREADS={nthreads}"'
         ' -v {work}:/work -w /work'
         ' rltut'
-        ' sh -c "newusers < users.txt'
-        ' ; jupyterhub --port 80 --ip=*'
-        ' -f /etc/jupyterhub/jupyterhub_config.py"'
+        ' bash -c \'newusers < users.txt ;'
+        ' Xvfb -screen 0 1400x900x24 :99 &'
+        ' xhost + ;'
+        ' DISPLAY=:99 jupyterhub --port 80 --ip=*'
+        ' -f /etc/jupyterhub/jupyterhub_config.py\''
     ).format(nthreads=num_threads,
              work=os.path.abspath(work)),
                           shell=True)
