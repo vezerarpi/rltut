@@ -81,3 +81,10 @@ for episode = 1, M:
         Perform a gradient update step on the loss wrt the weights w
         if done: break
 ```
+
+## Further reading
+
+* [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/bookdraft2017nov5.pdf), Sutton and Barto, 2014. A text book covering almost all aspects of RL theory.
+* [Human Level Control Through Deep Reinforcement Learning](https://deepmind.com/research/publications/human-level-control-through-deep-reinforcement-learning/), Mnih et al., 2015. The original paper that used deep convolutional networks to approximate the Q function and learn to play Atari games.
+* [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783), Mnih et al., 2016. An alternative to Q-learning, this paper also includes lots of information on Q learning as well as introducing an asynchronous version of Actor-Critic, a powerful alternative to DQN.
+* [Rainbow: Combining Improvements in Deep Reinforcement Learning](https://arxiv.org/abs/1710.02298), Hessel et al., 2017. This paper throws together all the mosts promising advacnes since DQN and evaluates them. Also includes good introductions to DQN and to the subsequent advances.

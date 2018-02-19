@@ -19,7 +19,7 @@ import chainer as C
 import gym
 import numpy as np
 
-from .examples import model, log
+from . import model, log
 
 
 # TODO replace the output path with your name
@@ -78,7 +78,7 @@ Gym can output videos of episodes, which for CartPole can be played in real time
 * `force` - flag to force creation of new, or overwriting of existsing output directires
 * `video_callable` - a function that takes the episode number and returns whther to record a video, defaults to every cubic number or every 1K episodes after the first 1K
 
-The `examples.log` module has a Monitor class wrapping gym's Monitor to provide extra logging at the end of each episode as well as recording videos, both of which can be viewed in the `examples.Log.ipynb` notebook. The `log.Monitor` class accepts all the aarguments mentioned above.
+The `log` module has a Monitor class wrapping gym's Monitor to provide extra logging at the end of each episode as well as recording videos, both of which can be viewed in the `Log.ipynb` notebook. The `log.Monitor` class accepts all the arguments mentioned above.
 '''
 env = log.Monitor(env, directory=output_path, print_every=1,
                   force=True, video_callable=lambda ep: ep % 10 == 0)
