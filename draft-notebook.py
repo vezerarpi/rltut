@@ -234,38 +234,15 @@ Now that we have an agent we can start training it over multiple episodes of the
 
 It might be useful to print out an evaluation of the model for a fixed set of states to be able to check that the values are changing and that it is beginning to behave as expected in those states.
 
-After a certain number of episodes you can use the `eval_cartpole` function to print the Q values form the model for 7 pole angles between +/-10 degrees. These Q values should increase over time as your model experiences longer episodes , and thus more rewards, when it chooses actions that help stabilise the pole. If your values are not changing from one iteration to the next then there may be a problem with the chainer code that is stopping gradient updates s from being applied back through the components of the model. These outputs are only a rough indicator of how well your model is doing. It is unlikely to ever see exactly these states so it may not have made the best decision for each of them, but if the rewards are not increasing and the Q values do not look like they are moving towards values that you would expect given the pole orientation then something is probably wrong.
+After a certain number of episodes you can use the `CartPoleModel.print_eval` method to print the Q values form the model for 7 pole angles between +/-10 degrees. These Q values should increase over time as your model experiences longer episodes , and thus more rewards, when it chooses actions that help stabilise the pole. If your values are not changing from one iteration to the next then there may be a problem with the chainer code that is stopping gradient updates s from being applied back through the components of the model. These outputs are only a rough indicator of how well your model is doing. It is unlikely to ever see exactly these states so it may not have made the best decision for each of them, but if the rewards are not increasing and the Q values do not look like they are moving towards values that you would expect given the pole orientation then something is probably wrong.
 '''
-
-
-def eval_cartpole(agent):
-    '''
-    Evaluates the agent's Q-function at 7 pole angles between +/-10 degrees. The other values of the state are 0.0, so the cart is in the middle of the space and not moving and the pole currently has 0.0 velocity. Also prints indicators showing which action has the highest value at each state.
-
-    Expects agent to have a _model member that is the chainer model for its Q function.
-    '''
-    theta_limit = 10 * 2 * np.pi / 360
-    n = 7
-    thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
-    states = np.array([[0.0, 0.0, theta, 0.0]
-                       for theta in thetas],
-                      dtype=np.float32)
-    print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
-                                 for x in states[:, 2] * 360 / 2 / np.pi]))
-    qs = agent._model(C.Variable(states)).data
-    agent._model.cleargrads()
-    a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
-    print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
-                                 for l, r in qs]))
-    print('Eval Q    ', ''.join(['[{:5.2f}{}{:5.2f}]'.format(l, y, r)
-                                 for (l, r), y in zip(qs, a)]))
 
 
 n_episodes = 1000
 # Re-initialise the Environment and Monitor
 env = gym.make('CartPole-v0')
 env = log.Monitor(env, directory=output_path, print_every=1,
-                  force=True, video_callable=lambda ep: ep % 10 == 0)
+                  force=True, video_callable=lambda ep: ep % 20 == 0)
 env.seed(0)
 agent = Agent()
 
@@ -274,8 +251,8 @@ for ep in range(n_episodes):
     # agent.reward()
 
 # TODO print the total reward after each episode, optionally also call
-# eval_cartpole() to see how the agent is learnign to estimate those particular
-# states every now and then (e.g. every 20 episodes)
+# the model's print_eval() to see how the agent is learnign to estimate
+# those particular states every now and then (e.g. every 20 episodes)
 
 '''
 ## Further work

@@ -18,6 +18,28 @@ class CartPoleModel(C.Chain):
         h = C.functions.relu(self.l1(state))
         return self.l2(h)
 
+    def print_eval(self):
+        '''
+        Evaluates the model at 7 pole angles between +/-10 degrees. The other values of the state are 0.0, so the cart is in the middle of the space and not moving and the pole currently has 0.0 velocity. Prints Q values and indicators showing which action has the highest value at each state.
+
+        '''
+        theta_limit = 10 * 2 * np.pi / 360
+        n = 7
+        thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
+        states = np.array([[0.0, 0.0, theta, 0.0]
+                        for theta in thetas],
+                        dtype=np.float32)
+        print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
+                                    for x in states[:, 2] * 360 / 2 / np.pi]))
+        qs = agent._model(C.Variable(states)).data
+        agent._model.cleargrads()
+        a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
+        print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
+                                    for l, r in qs]))
+        print('Eval Q    ', ''.join(['[{:5.2f}{}{:5.2f}]'.format(l, y, r)
+                                    for (l, r), y in zip(qs, a)]))
+
+
 
 class AtariModel(C.Chain):
     '''
