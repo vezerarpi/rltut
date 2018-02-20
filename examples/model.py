@@ -1,4 +1,5 @@
 import chainer as C
+import numpy as np
 
 
 class CartPoleModel(C.Chain):
@@ -27,12 +28,12 @@ class CartPoleModel(C.Chain):
         n = 7
         thetas = np.flip(np.linspace(-theta_limit, theta_limit, n), axis=0)
         states = np.array([[0.0, 0.0, theta, 0.0]
-                        for theta in thetas],
-                        dtype=np.float32)
+                           for theta in thetas],
+                          dtype=np.float32)
         print('Eval Theta', ''.join(['[{:^12.1f}]'.format(x)
                                     for x in states[:, 2] * 360 / 2 / np.pi]))
-        qs = agent._model(C.Variable(states)).data
-        agent._model.cleargrads()
+        qs = self(C.Variable(states)).data
+        self.cleargrads()
         a = ['_R' if x else 'L_' for x in np.argmax(qs, axis=1)]
         print('Eval L - R', ''.join(['[{:^12.1f}]'.format(l - r)
                                     for l, r in qs]))
