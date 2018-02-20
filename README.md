@@ -1,16 +1,22 @@
 # rltut
 
-Reinforcement Learning Tutorial (Draft)
+Reinforcement Learning Tutorial.
 
-## Self-hosting
+## Getting started
 
- - Install Docker
- - Download/clone this repo
+ - See our [intro presentation](https://docs.google.com/presentation/d/1rJo2nzRS3zimhr6R29wbSg9i5QKd0XYPhU6Ov4sRc6U)
+ - Install [Docker](https://www.docker.com/get-docker), Git, Python3
+ - Download/clone this repository
  - Use the `run` python script to build & run a notebook server
    - `./run build`
    - `./run notebook`
+     - Choose a password for your notebook server
+     - Open http://localhost:6767
+
 
 ## Deployment
+
+Running a multi-user server on Azure:
 
     $ docker run --rm -v ${HOME}:/root -v `pwd`:/work -w /work -it azuresdk/azure-cli-python
     az login

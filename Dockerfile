@@ -35,7 +35,7 @@ COPY requirements.txt /tmp/rltut/
 RUN pip3 install -r /tmp/rltut/requirements.txt
 
 COPY . /tmp/rltut
-RUN cp -r /tmp/rltut/examples /examples                    \
-    && mkdir -p /etc/jupyterhub/                           \
-    && cp /tmp/rltut/jupyterhub_config.py /etc/jupyterhub/ \
+RUN cp -r /tmp/rltut/examples /examples                            \
+    && mkdir -p /etc/jupyterhub/                                   \
+    && cp /tmp/rltut/scripts/jupyterhub_config.py /etc/jupyterhub/ \
     && rm -r /tmp/rltut

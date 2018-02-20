@@ -29,7 +29,7 @@ def run(command):
 def notebook():
     password = subprocess.check_output(
         'docker run --rm -i -v `pwd`:/work -w /work rltut'
-        ' python3 get_ipython_password.py',
+        ' python3 scripts/get_ipython_password.py',
         shell=True).decode('utf-8').rstrip('\n')
     sh('docker rm -f rltut-notebook || true')
     sh('{docker} run -d --name rltut-notebook -p 6767:6767'
