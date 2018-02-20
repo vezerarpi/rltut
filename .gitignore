@@ -1,0 +1,7 @@
+.ipynb_checkpoints
+.notebook-password
+out/
+local/
+work/
+__pycache__
+*.pyc

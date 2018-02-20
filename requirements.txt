@@ -1,0 +1,8 @@
+numpy
+chainer
+seaborn
+gym[atari]
+gym[box2d]
+gym[classic_control]
+jupyter
+jupyterhub

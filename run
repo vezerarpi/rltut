@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+
+import subprocess
+import argparse
+import os
+
+
+def sh(cmd, **args):
+    if subprocess.call(cmd.format(**args), shell=True):
+        exit(1)
+
+
+def build():
+    sh('docker build --rm -t rltut .')
+
+
+def _docker_cmd():
+    return ('docker'
+            if subprocess.call(['which', 'nvidia-docker']) else
+            'nvidia-docker')
+
+
+def run(command):
+    sh('{docker} run --rm -it rltut {command}',
+       docker=_docker_cmd(),
+       command=' '.join(command))
+
+
+def notebook():
+    password = subprocess.check_output(
+        'docker run --rm -i -v `pwd`:/work -w /work rltut'
+        ' python3 get_ipython_password.py',
+        shell=True).decode('utf-8').rstrip('\n')
+    sh('docker rm -f rltut-notebook || true')
+    sh('{docker} run -d --name rltut-notebook -p 6767:6767'
+       ' -v `pwd`:/work -w /work'
+       ' -e PYTHONPATH=/work'
+       ' rltut'
+       ' bash -c \'Xvfb -screen 0 1400x900x24 :99 &'
+       ' DISPLAY=:99 jupyter notebook --port=6767 --ip="*"'
+       ' --allow-root --NotebookApp.password={password}\'',
+       docker=_docker_cmd(),
+       password=password)
+    print('Running notebook at http://localhost:6767')
+
+
+def prepare(users, work):
+    if not os.path.isdir(work):
+        os.makedirs(work)
+
+    with open(os.path.join(work, 'users.txt'), 'w') as f:
+        admin_password = input('Type admin password: ').rstrip('\n')
+        f.write('admin:{password}::::/work/admin:\n'.format(
+            password=admin_password))
+        for user in users:
+            # Add the user to the list
+            f.write('U:U::::/work/U:\n'.replace('U', user))
+
+            # Create a home directory locally
+            home = os.path.join(work, user)
+            if not os.path.isdir(home):
+                os.makedirs(home)
+
+            # Copy in a tutorial notebook from Docker
+            subprocess.check_call((
+                'docker run --rm -it -v {work}:/work rltut'
+                ' sh -c "cp /examples/* /work/{user}'
+                ' && chmod -R ugo+rw /work/{user}"'
+            ).format(work=os.path.abspath(work),
+                     user=user),
+                                  shell=True)
+
+
+def start(work, num_threads):
+    subprocess.check_call((
+        'docker run --detach --name rltut -p 80:80'
+        ' -e "OPENBLAS_NUM_THREADS={nthreads}"'
+        ' -v {work}:/work -w /work'
+        ' rltut'
+        ' bash -c \'newusers < users.txt ;'
+        ' Xvfb -screen 0 1400x900x24 :99 &'
+        ' xhost + ;'
+        ' DISPLAY=:99 jupyterhub --port 80 --ip=*'
+        ' -f /etc/jupyterhub/jupyterhub_config.py\''
+    ).format(nthreads=num_threads,
+             work=os.path.abspath(work)),
+                          shell=True)
+
+
+parser = argparse.ArgumentParser(
+    description='Runner script for rltut'
+)
+parser.set_defaults(action=lambda: parser.print_help())
+subs = parser.add_subparsers()
+
+subs.add_parser('build').set_defaults(action=build)
+
+subs.add_parser('notebook').set_defaults(action=notebook)
+
+p = subs.add_parser('run')
+p.add_argument('command', nargs='*')
+p.set_defaults(action=run)
+
+p = subs.add_parser('prepare')
+p.add_argument('users', nargs='*')
+p.add_argument('--work', default='work')
+p.set_defaults(action=prepare)
+
+p = subs.add_parser('start')
+p.add_argument('--work', default='work')
+p.add_argument('--num-threads', default=2)
+p.set_defaults(action=start)
+
+args = vars(parser.parse_args())
+action = args.pop('action')
+action(**args)
