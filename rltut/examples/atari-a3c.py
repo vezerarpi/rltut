@@ -70,7 +70,7 @@ def prepare_input(x):
     assert len(x.shape) in [3, 4]
     if len(x.shape) == 3:
         x = x.reshape((-1,) + x.shape)
-    x = np.moveaxis(x, 3, 1).astype(np.float32)
+    x = np.moveaxis(x, 3, 1).astype(np.uint8)
     return x / 255.  # normalise pixel values
 
 
@@ -79,14 +79,69 @@ class AsyncAgent:
     def model_params(self):
         raise NotImplementedError()
 
-    def act(self, state):
+    def episode_start(self, init_state):
          raise NotImplementedError()
 
-    def step_update(self, reward, next_state):
+    def act(self):
+         raise NotImplementedError()
+
+    def step_update(self, reward, next_state, done):
         raise NotImplementedError()
 
-    def episode_update(self):
-        raise NotImplementedError
+    def episode_end(self):
+        raise NotImplementedError()
+
+
+class A3CAgent(AsyncAgent):
+    def __init__(self, observation_shape, n_actions, optim_factory, dummy_state):
+        self._epsilon = 1.0
+        self._epsilon_decay = 1e-3
+        self._gamma = np.float32(0.99)
+        self._observation_shape = observation_shape
+        self._x_shape = (-1,) + self._observation_shape
+        self._n_actions = n_actions
+        self._dummy_state = dummy_state
+        self._exp = []
+        self._policy = Model(observation_shape, n_actions)
+        self._optim_policy = optim_factory()
+        self._value = Model(observation_shape, 1)
+        self._optim_value = optim_factory()
+
+    def model_params(self):
+        params = [self._policy.namedparams()]
+        params.extend(self._value.namedparams())
+        print('model_params', list(map(operator.itemgetter(0), params)))#XXX
+        return dict(params)
+
+    def episode_start(self, init_state):
+        self._exps.clear()
+        self._exps.append(dict(state=prepare_input(init_state),
+                               action=None,
+                               reward=None,
+                               done=False))
+
+    def act(self):
+        if rng.random() < self._epsilon:
+            action = rng.choice([0, 1])
+        else:
+            x = self._prepare_input(self._exps['state'])
+            action = np.argmax(self._policy(C.Variable(x)).data)
+        self._exps[-1].update(action=action)
+        return action
+
+    def step_update(self, reward, next_state, done):
+        self._exps[-1].update(reward=reward)
+        self._exps.append(dict(state=prepare_input(next_state), done=done))
+
+    def episode_end(self):
+        backwards = reversed(self._exps)
+        last = next(backwards)
+        reward = 0 if last['done'] else self._value(last['state'])
+        gradients = None
+        for trans in backwards:
+            reward = trans['reward'] + self._gamma * reward
+            # TODO accumulate gradients XXX
+        return gradients
 
 
 def setup_signal_handlers(shared_flag):
@@ -131,19 +186,21 @@ def train_async(agent_func, env_func, optim_func, n_procs):
         env = env_func()#XXX
         for ep in range(n_episodes):
             pull_from_shared(master_params, agent.model_params())#XXX
-            state = env.reset()
-            state = scale_img(state)
+            state = scale_img(env.reset())
+            agent.episode_start(state)
             done = False
             t_ep_start = time.time()
             while not done:
                 if shared_stop_flag.value:
                     break
-                state, reward, done, _ = env.step(agent.act(np.array(state, dtype=np.float32)))
-                state = scale_img(state).astype(np.uint8)
-                agent.step_update(reward, None if done else state)
+                state, reward, done, _ = env.step(agent.act())
+                state = scale_img(state)
+                agent.step_update(reward, state, done)
             if shared_stop_flag.value:
                 break
-            agent.episode_update()
+            agent.episode_end()
+            # TODO return param deltas and apply those instead of copying all
+            # params?
             push_to_shared(master_params, agent.model_params())#XXX
             t = time.time() - t_ep_start
             steps = env.get_episode_lengths()[-1]
