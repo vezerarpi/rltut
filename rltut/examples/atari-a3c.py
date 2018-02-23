@@ -48,7 +48,9 @@ class Model(C.Chain):
     def __call__(self, state):
         z1 = C.functions.relu(self.conv1(state))
         z2 = C.functions.relu(self.conv2(z1))
+        print('z2', z2.shape)
         z3 = C.functions.relu(self.projection(z2))
+        print('projection', [p.shape for p in self.projection.params()])
         actions = self.action_values(z3)
         if self._softmax:
             actions = C.functions.log_softmax(actions)
@@ -74,8 +76,14 @@ def prepare_input(x):
     assert len(x.shape) in [3, 4]
     if len(x.shape) == 3:
         x = x.reshape((-1,) + x.shape)
-    x = np.moveaxis(x, 3, 1).astype(np.uint8)
+    x = np.moveaxis(x, 3, 1).astype(np.float32)
     return x / 255.  # normalise pixel values
+
+
+def make_rmsprop(model):
+    opt = C.optimizers.RMSprop(lr=1e-2)  # TODO what does the paper say about lr?
+    opt.setup(model)
+    return opt
 
 
 # New async part
@@ -105,14 +113,19 @@ class A3CAgent(AsyncAgent):
         self._x_shape = (-1,) + self._observation_shape
         self._n_actions = n_actions
         self._dummy_state = dummy_state
-        self._exp = []
+        self._exps = []
         self._policy = Model(observation_shape, n_actions, softmax=True)
-        self._optim_policy = optim_factory()
+        self._optim_policy = optim_factory(self._policy)
         self._value = Model(observation_shape, 1, softmax=False)
-        self._optim_value = optim_factory()
+        self._optim_value = optim_factory(self._value)
+        # models need to be forwarded to initialise all params so that they can
+        # be extracted before training
+        x = C.Variable(prepare_input(dummy_state))
+        self._policy(x)
+        self._value(x)
 
     def model_params(self):
-        params = [self._policy.namedparams()]
+        params = list(self._policy.namedparams())
         print('model_params policy', list(map(operator.itemgetter(0), params)))#XXX
         params.extend(self._value.namedparams())
         print('model_params value', list(map(operator.itemgetter(0), params)))#XXX
@@ -128,7 +141,8 @@ class A3CAgent(AsyncAgent):
                                done=False))
 
     def act(self):
-        x = C.Variable(self._prepare_input(self._exps['state']))
+        x = C.Variable(self._exps[-1]['state'])
+        print('act x', x.shape, [p.shape for p in self._policy.conv1.params()])
         actions = self._policy(x)
         action = np.argmax(actions.data)
         paction = actions[action]
@@ -166,7 +180,8 @@ def setup_signal_handlers(shared_flag):
         shared_flag.value = 1
 
     for sig in [signal.SIGABRT, signal.SIGINT,
-                signal.SIGTERM, signal.SIGSTOP]:
+                signal.SIGTERM]:
+        print('signal.signal', sig)
         signal.signal(sig, handler)
 
 
@@ -178,25 +193,37 @@ def setup_shared_params(orig_params):
         assert param.dtype == np.float32
         shared_buffers[key] = mp.RawArray('f', param.data.ravel())
         shared_arrays[key] = \
-            np.from_buffer(shared_buffers[key], dtype=param.data.dtype)
+            np.frombuffer(shared_buffers[key], dtype=param.data.dtype)
     return shared_arrays, shared_buffers
 
 
 def pull_from_shared(shared_arrays, local_params):
     # TODO use this in setup_shared_params
-    for key, param in local_params:
+    for key, param in local_params.items():
         assert key in shared_arrays
-        param.data = np.from_buffer(
+        param.data = np.frombuffer(
             shared_arrays[key], dtype=param.data.dtype).reshape(param.data.shape)
 
 def push_to_shared(shared_arrays, local_params):
-    for key, param in local_params:
+    for key, param in local_params.items():
         assert key in shared_arrays
         shared_arrays[key][:] = param.data
 
 def train_async(agent_func, env_func, optim_func, n_procs):
+    '''
+    Train an agent over n_procs processes, with each process training
+    an instance of the agent and updating a shared copy of the model parameters.
+
+      agent_func - function taking (process_id, env, optim_func) as arguments
+                   and returning an AsyncAgent
+      env_func - function taking no arguments and returning an environment
+      optim_func - function taking a (model) as an argument thaht returns
+                   an optimiser set up for the model
+    '''
+
     # init master agent
-    master_agent = agent_func(0, optim_func())#XXX model needs to be forwarded to initialise all params
+    master_env = env_func()
+    master_agent = agent_func(0, master_env, optim_func)
     # buffers holds the shared memory RawArrays, params holds the numpy
     # arrays that reference the buffers and should be to assigned to
     master_arrays, master_rawarrays = setup_shared_params(master_agent.model_params())
@@ -209,11 +236,10 @@ def train_async(agent_func, env_func, optim_func, n_procs):
 
     # create n new processes with env, agent wrapped in a runner func capturing the shared params
     def runner(agent_func, env_func, optim_func, stop_flag, process_idx):
-        optim = optim_func()#XXX
-        agent = agent_func(process_idx, optim)#XXX
-        env = env_func()#XXX
+        env = env_func()
+        agent = agent_func(process_idx, env, optim_func)
         for ep in range(n_episodes):
-            pull_from_shared(master_params, agent.model_params())#XXX
+            pull_from_shared(master_arrays, agent.model_params())
             state = scale_img(env.reset())
             agent.episode_start(state)
             done = False
@@ -229,7 +255,7 @@ def train_async(agent_func, env_func, optim_func, n_procs):
             agent.episode_end()
             # TODO return param deltas and apply those instead of copying all
             # params?
-            push_to_shared(master_params, agent.model_params())#XXX
+            push_to_shared(master_arrays, agent.model_params())
             t = time.time() - t_ep_start
             steps = env.get_episode_lengths()[-1]
             print('episode', ep, 'duration', t, 'steps', steps, 'steps/sec', steps / t)
@@ -240,7 +266,7 @@ def train_async(agent_func, env_func, optim_func, n_procs):
                     print('episodes', ep - eval_period, '-', ep, 'steps', ' '.join(map(str, ep_lengths)))
 
     # start each proc and then join it
-    setup_signal_handlers()  # flags all processes to halt
+    setup_signal_handlers(shared_stop_flag)  # flags all processes to halt
     procs = {}
     for process_idx in range(1, n_procs+1):
         procs[process_idx] = mp.Process(target=runner,
@@ -255,3 +281,17 @@ def train_async(agent_func, env_func, optim_func, n_procs):
         p.join()
         if p.exitcode != 0:
             print(process_idx, 'exit code', p.exitcode)
+
+
+if __name__ == '__main__':
+    def env_func():
+        return gym.make('Breakout-v4')
+
+    def agent_func(proc_idx, env, optim_factory):
+        return A3CAgent(env.observation_space.shape,
+                        env.action_space.n,
+                        optim_factory,
+                        env.observation_space.sample())
+
+    n_procs = 1
+    train_async(agent_func, env_func, make_rmsprop, n_procs)
